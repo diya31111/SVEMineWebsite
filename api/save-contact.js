@@ -13,8 +13,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "First name and message are required" });
     }
 
-    const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || "sveinterior11@gmail.com";
-
     try {
         const nodemailer = await import("nodemailer");
         const transporter = nodemailer.default.createTransport({
@@ -27,8 +25,8 @@ export default async function handler(req, res) {
 
         await transporter.sendMail({
             from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
-            to: NOTIFY_EMAIL,
-            subject: `New SVE Lead: ${firstName} ${lastName}`,
+            to: "sveinterior@yahoo.com",
+            subject: `New Enquiry: ${firstName} ${lastName}`,
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
                     <h2 style="color: #bc8f8f;">New Contact Form Submission</h2>
@@ -39,24 +37,6 @@ export default async function handler(req, res) {
                     <hr style="border: none; border-top: 1px solid #eee;" />
                     <p style="font-size: 0.85em; color: #777;">
                         Received on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
-                    </p>
-                </div>
-            `,
-        });
-
-        await transporter.sendMail({
-            from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Thank you for contacting SVE Interior",
-            html: `
-                <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                    <h2 style="color: #bc8f8f;">Hello ${firstName},</h2>
-                    <p>Thank you for reaching out to <strong>SVE Interior</strong>.</p>
-                    <p>We have received your message and our design team led by <strong>Yash and Nidhi Mamoria</strong> will review your requirements shortly.</p>
-                    <hr style="border: none; border-top: 1px solid #eee;" />
-                    <p style="font-size: 0.9em; color: #777;">
-                        <strong>SVE Interior Studio</strong><br>
-                        264, Gurunanakpura, Raja Park, Jaipur
                     </p>
                 </div>
             `,
