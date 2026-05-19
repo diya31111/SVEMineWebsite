@@ -49,7 +49,7 @@ export default function Contact() {
 
                 <div className="text-center mb-16">
                     <h1 className="text-5xl md:text-6xl font-serif text-heading mb-4">Get In Touch</h1>
-                    <p className="text-body-text">We endeavor to answer all enquiries within 24 hours on business days.</p>
+                    <p className="text-body-text">We endeavor to answer all enquiries within 1 business day.</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
