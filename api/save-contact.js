@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
         await transporter.sendMail({
             from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
-            to: "guptavipul1011@gmail.com",
+            to: "sveinterior@yahoo.com",
             subject: `New Enquiry: ${firstName} ${lastName}`,
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
