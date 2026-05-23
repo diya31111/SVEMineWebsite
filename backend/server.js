@@ -7,6 +7,7 @@ const { listLeads, saveLead } = require("./storage");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const CONTACT_RECIPIENT_EMAIL = "sveinterior@yahoo.com";
 
 // Middleware
 app.use(cors({
@@ -24,65 +25,56 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+async function sendBusinessNotification({ firstName, lastName = "", email, message }) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error("Email service is not configured. Set EMAIL_USER and EMAIL_PASS.");
+    }
+
+    const fullName = `${firstName} ${lastName}`.trim();
+    const submittedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+
+    await transporter.sendMail({
+        from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
+        to: CONTACT_RECIPIENT_EMAIL,
+        replyTo: email,
+        subject: `New SVE Lead: ${fullName}`,
+        text: `You have received a new inquiry for SVE Interior:
+
+Name: ${fullName}
+Email: ${email}
+Message: ${message}
+
+Date: ${submittedAt}`
+    });
+}
+
 // Routes
-app.post("/api/save-contact", (req, res) => {
-    const { firstName, lastName, email, message } = req.body;
+app.post("/api/save-contact", async (req, res) => {
+    const { firstName, lastName = "", email, message } = req.body;
 
     if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "Invalid email address" });
     }
 
-    saveLead({
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        message,
-    })
-        .then(async (lead) => {
-            res.status(201).json({ message: "Success", id: lead.id });
+    if (!firstName || !message) {
+        return res.status(400).json({ error: "First name and message are required" });
+    }
 
-            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-                try {
-                    await transporter.sendMail({
-                        from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
-                        to: email,
-                        subject: "Thank you for contacting SVE Interior",
-                        html: `
-                            <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                                <h2 style="color: #bc8f8f;">Hello ${firstName},</h2>
-                                <p>Thank you for reaching out to <strong>SVE Interior</strong>.</p>
-                                <p>We have received your message and our design team led by <strong>Yash and Nidhi Mamoria</strong> and will review your requirements shortly.</p>
-                                <hr style="border: none; border-top: 1px solid #eee;" />
-                                <p style="font-size: 0.9em; color: #777;">
-                                    <strong>SVE Interior Studio</strong><br>
-                                    264, Gurunanakpura, Raja Park, Jaipur
-                                </p>
-                            </div>
-                        `
-                    });
-
-                    await transporter.sendMail({
-                        from: process.env.EMAIL_USER,
-                        to: process.env.EMAIL_USER,
-                        subject: `New SVE Lead: ${firstName} ${lastName}`,
-                        text: `You have received a new inquiry for SVE Interior:
-
-                    Name: ${firstName} ${lastName}
-                    Email: ${email}
-                    Message: ${message}
-
-                    Date: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`
-                    });
-                    console.log("Emails dispatched successfully.");
-                } catch (mailErr) {
-                    console.error("Email failed:", mailErr.message);
-                }
-            }
-        })
-        .catch((err) => {
-            console.error("Lead save error:", err.message);
-            res.status(500).json({ error: err.message || "Failed to save lead" });
+    try {
+        const lead = await saveLead({
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            message,
         });
+
+        await sendBusinessNotification({ firstName, lastName, email, message });
+
+        res.status(201).json({ message: "Success", id: lead.id });
+    } catch (err) {
+        console.error("Contact submission error:", err.message);
+        res.status(500).json({ error: err.message || "Failed to save lead" });
+    }
 });
 
 app.get("/api/leads", async (_req, res) => {
