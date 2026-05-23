@@ -1,9 +1,31 @@
+const CONTACT_RECIPIENT_EMAIL = "sveinterior@yahoo.com";
+
+function escapeHtml(value = "") {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 export default async function handler(req, res) {
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { firstName, lastName, email, message } = req.body;
+    let body;
+    try {
+        body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    } catch {
+        return res.status(400).json({ error: "Invalid request body" });
+    }
+
+    if (!body) {
+        return res.status(400).json({ error: "Missing request body" });
+    }
+
+    const { firstName, lastName = "", email, message } = body;
 
     if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "Invalid email address" });
@@ -14,6 +36,11 @@ export default async function handler(req, res) {
     }
 
     try {
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.error("Contact form email is not configured. Set EMAIL_USER and EMAIL_PASS.");
+            return res.status(500).json({ error: "Email service is not configured" });
+        }
+
         const nodemailer = await import("nodemailer");
         const transporter = nodemailer.default.createTransport({
             service: "gmail",
@@ -23,20 +50,34 @@ export default async function handler(req, res) {
             },
         });
 
+        const submittedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+        const fullName = `${firstName} ${lastName}`.trim();
+        const safeName = escapeHtml(fullName);
+        const safeEmail = escapeHtml(email);
+        const safeMessage = escapeHtml(message);
+
         await transporter.sendMail({
             from: `"SVE Interior" <${process.env.EMAIL_USER}>`,
-            to: "guptavipul1011@gmail.com",
-            subject: `New Enquiry: ${firstName} ${lastName}`,
+            to: CONTACT_RECIPIENT_EMAIL,
+            replyTo: email,
+            subject: `New SVE Enquiry: ${fullName}`,
+            text: `You have received a new inquiry for SVE Interior:
+
+Name: ${fullName}
+Email: ${email}
+Message: ${message}
+
+Date: ${submittedAt}`,
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
                     <h2 style="color: #bc8f8f;">New Contact Form Submission</h2>
-                    <p><strong>Name:</strong> ${firstName} ${lastName}</p>
-                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Name:</strong> ${safeName}</p>
+                    <p><strong>Email:</strong> ${safeEmail}</p>
                     <p><strong>Message:</strong></p>
-                    <p style="background: #f9f5f3; padding: 12px; border-radius: 8px;">${message}</p>
+                    <p style="background: #f9f5f3; padding: 12px; border-radius: 8px;">${safeMessage}</p>
                     <hr style="border: none; border-top: 1px solid #eee;" />
                     <p style="font-size: 0.85em; color: #777;">
-                        Received on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+                        Received on ${submittedAt}
                     </p>
                 </div>
             `,
